@@ -83,10 +83,11 @@ if query_name:
     if not result_risk.empty:
         st.markdown("### 风险值查询结果")
         risk_value = result_risk.iloc[0]['风险值']
-        # 如果风险值大于 2.5，添加闪烁效果
+        
+        # 根据风险值显示不同的提示信息
         if risk_value > 2.5:
-            st.markdown(f"<p class='blink'>作者: {result_risk.iloc[0]['作者']}, 风险值: {risk_value}</p>", unsafe_allow_html=True)
+            st.markdown(f"<p class='blink'>作者: {result_risk.iloc[0]['作者']}, 风险值: {risk_value}（高风险）</p>", unsafe_allow_html=True)
         else:
-            st.write(f"作者: {result_risk.iloc[0]['作者']}, 风险值: {risk_value}")
+            st.write(f"作者: {result_risk.iloc[0]['作者']}, 风险值: {risk_value}（低风险）")
     else:
         st.write("暂时没有相关记录。")
