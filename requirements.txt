@@ -53,3 +53,4 @@ wkhtmltopdf
 xlsxwriter
 reportlab
 plotly
+networkx
