@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import networkx as nx
+import plotly.graph_objects as go
 
 # 设置页面标题
 st.title("科研人员信用风险预警查询")
@@ -9,8 +11,6 @@ st.title("科研人员信用风险预警查询")
 df_paper = pd.read_excel('data2.xlsx', sheet_name='论文')
 df_project = pd.read_excel('data2.xlsx', sheet_name='项目')
 df_risk = pd.read_excel('data2.xlsx', sheet_name='风险值')
-
-query_name = st.text_input("请输入查询名字：")
 
 # 定义闪烁效果的 CSS
 blink_css = """
@@ -61,6 +61,9 @@ st.markdown(blink_css, unsafe_allow_html=True)
 if st.button("返回主页"):
     st.markdown("[点击这里返回主页](https://chengyi10.wordpress.com/)", unsafe_allow_html=True)
 
+# 输入查询名字
+query_name = st.text_input("请输入查询名字：")
+
 if query_name:
     # 在论文表中寻找姓名等于查询输入的名字
     result_paper = df_paper[df_paper['姓名'] == query_name]
@@ -95,3 +98,80 @@ if query_name:
             st.write(f"作者: {result_risk.iloc[0]['作者']}, 风险值: {risk_value}（低风险）")
     else:
         st.write("暂时没有相关记录。")
+
+    # 构建网络关系图
+    if not result_paper.empty or not result_project.empty:
+        st.markdown("### 网络关系图")
+        
+        # 创建一个空的无向图
+        G = nx.Graph()
+        
+        # 添加查询作者到图中
+        G.add_node(query_name)
+        
+        # 查找与查询作者有共同研究机构、研究方向或不端内容的作者
+        if not result_paper.empty:
+            # 获取查询作者的研究机构、研究方向和不端内容
+            research_institution = result_paper.iloc[0]['研究机构']
+            research_direction = result_paper.iloc[0]['研究方向']
+            misconduct_content = result_paper.iloc[0]['不端内容']
+            
+            # 查找与查询作者有共同研究机构、研究方向或不端内容的作者
+            related_authors = df_paper[
+                (df_paper['研究机构'] == research_institution) |
+                (df_paper['研究方向'] == research_direction) |
+                (df_paper['不端内容'] == misconduct_content)
+            ]['姓名'].unique()
+            
+            # 添加相关作者到图中，并建立边
+            for author in related_authors:
+                if author != query_name:
+                    G.add_node(author)
+                    G.add_edge(query_name, author)
+        
+        # 使用 plotly 绘制网络图
+        pos = nx.spring_layout(G)  # 布局算法
+        edge_trace = []
+        for edge in G.edges():
+            x0, y0 = pos[edge[0]]
+            x1, y1 = pos[edge[1]]
+            edge_trace.append(go.Scatter(
+                x=[x0, x1, None], y=[y0, y1, None],
+                line=dict(width=0.5, color='#888'),
+                hoverinfo='none',
+                mode='lines'
+            ))
+        
+        node_trace = go.Scatter(
+            x=[], y=[], text=[], mode='markers+text', hoverinfo='text',
+            marker=dict(
+                showscale=True,
+                colorscale='YlGnBu',
+                size=10,
+                colorbar=dict(
+                    thickness=15,
+                    title='Node Connections',
+                    xanchor='left',
+                    titleside='right'
+                )
+            )
+        )
+        
+        for node in G.nodes():
+            x, y = pos[node]
+            node_trace['x'] += tuple([x])
+            node_trace['y'] += tuple([y])
+            node_trace['text'] += tuple([node])
+        
+        fig = go.Figure(data=edge_trace + [node_trace],
+                        layout=go.Layout(
+                            title='<br>Network graph of related authors',
+                            titlefont_size=16,
+                            showlegend=False,
+                            hovermode='closest',
+                            margin=dict(b=20, l=5, r=5, t=40),
+                            xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+                            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False)
+                        ))
+        
+        st.plotly_chart(fig)
