@@ -121,25 +121,46 @@ if query_name:
                 (df_paper['研究机构'] == research_institution) |
                 (df_paper['研究方向'] == research_direction) |
                 (df_paper['不端内容'] == misconduct_content)
-            ]['姓名'].unique()
+            ]
             
             # 添加相关作者到图中，并建立边
-            for author in related_authors:
+            for _, row in related_authors.iterrows():
+                author = row['姓名']
                 if author != query_name:
                     G.add_node(author)
-                    G.add_edge(query_name, author)
+                    # 确定边的标签（相连的原因）
+                    edge_label = []
+                    if row['研究机构'] == research_institution:
+                        edge_label.append(f"研究机构: {research_institution}")
+                    if row['研究方向'] == research_direction:
+                        edge_label.append(f"研究方向: {research_direction}")
+                    if row['不端内容'] == misconduct_content:
+                        edge_label.append(f"不端内容: {misconduct_content}")
+                    edge_label = "\n".join(edge_label)
+                    G.add_edge(query_name, author, label=edge_label)
         
         # 使用 plotly 绘制网络图
         pos = nx.spring_layout(G)  # 布局算法
         edge_trace = []
-        for edge in G.edges():
+        edge_labels = []
+        for edge in G.edges(data=True):
             x0, y0 = pos[edge[0]]
             x1, y1 = pos[edge[1]]
             edge_trace.append(go.Scatter(
                 x=[x0, x1, None], y=[y0, y1, None],
                 line=dict(width=0.5, color='#888'),
-                hoverinfo='none',
-                mode='lines'
+                hoverinfo='text',
+                mode='lines',
+                text=edge[2]['label'],  # 边的标签
+                hovertext=edge[2]['label']  # 鼠标悬停时显示的文本
+            ))
+            # 计算边的中点位置，用于显示标签
+            edge_labels.append(dict(
+                x=(x0 + x1) / 2,
+                y=(y0 + y1) / 2,
+                text=edge[2]['label'],
+                showarrow=False,
+                font=dict(size=10, color='black')
             ))
         
         node_trace = go.Scatter(
@@ -171,7 +192,8 @@ if query_name:
                             hovermode='closest',
                             margin=dict(b=20, l=5, r=5, t=40),
                             xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-                            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False)
+                            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+                            annotations=edge_labels  # 添加边的标签
                         ))
         
         st.plotly_chart(fig)
