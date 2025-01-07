@@ -57,6 +57,10 @@ blink_css = """
 # 添加闪烁效果的 CSS
 st.markdown(blink_css, unsafe_allow_html=True)
 
+# 添加返回按钮
+if st.button("返回主页"):
+    st.markdown("[点击这里返回主页](https://chengyi10.wordpress.com/)", unsafe_allow_html=True)
+
 if query_name:
     # 在论文表中寻找姓名等于查询输入的名字
     result_paper = df_paper[df_paper['姓名'] == query_name]
