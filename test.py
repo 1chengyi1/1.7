@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
 import networkx as nx
 import plotly.graph_objects as go
 
@@ -140,7 +139,7 @@ if query_name:
                     G.add_edge(query_name, author, label=edge_label)
         
         # 使用 plotly 绘制网络图
-        pos = nx.spring_layout(G)  # 布局算法
+        pos = nx.spring_layout(G, k=0.5)  # 布局算法，增加节点间距
         edge_trace = []
         edge_labels = []
         for edge in G.edges(data=True):
@@ -155,12 +154,14 @@ if query_name:
                 hovertext=edge[2]['label']  # 鼠标悬停时显示的文本
             ))
             # 计算边的中点位置，用于显示标签
-            edge_labels.append(dict(
-                x=(x0 + x1) / 2,
-                y=(y0 + y1) / 2,
-                text=edge[2]['label'],
-                showarrow=False,
-                font=dict(size=10, color='black')
+            edge_labels.append(go.Scatter(
+                x=[(x0 + x1) / 2],  # 边的中点
+                y=[(y0 + y1) / 2],
+                mode='text',
+                text=[edge[2]['label']],  # 边的标签
+                textposition='middle center',  # 标签位置
+                textfont=dict(size=12, color='black'),  # 调整字体大小
+                hoverinfo='none'
             ))
         
         node_trace = go.Scatter(
@@ -184,7 +185,7 @@ if query_name:
             node_trace['y'] += tuple([y])
             node_trace['text'] += tuple([node])
         
-        fig = go.Figure(data=edge_trace + [node_trace],
+        fig = go.Figure(data=edge_trace + [node_trace] + edge_labels,
                         layout=go.Layout(
                             title='<br>Network graph of related authors',
                             titlefont_size=16,
@@ -192,8 +193,7 @@ if query_name:
                             hovermode='closest',
                             margin=dict(b=20, l=5, r=5, t=40),
                             xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-                            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-                            annotations=edge_labels  # 添加边的标签
+                            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False)
                         ))
         
         st.plotly_chart(fig)
